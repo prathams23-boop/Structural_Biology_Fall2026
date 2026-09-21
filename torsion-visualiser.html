@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>phi/psi — backbone torsion lab</title>
+<style>
+:root{
+  --ink:#080b14; --panel:#0f1524; --panel2:#141b2d; --line:#232c44;
+  --text:#e9edf8; --muted:#8492b3;
+  --phi:#ffb43d; --psi:#3fd0e8; --bad:#ff5c57;
+  --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--text);font-family:var(--mono);font-size:13px;-webkit-font-smoothing:antialiased}
+.app{display:flex;flex-direction:column;height:100vh;min-height:0}
+
+header{display:flex;align-items:center;gap:18px;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.brand{font-family:var(--sans);font-weight:700;letter-spacing:.14em;text-transform:uppercase;font-size:12px;display:flex;align-items:baseline;gap:9px}
+.brand b{font-size:19px;letter-spacing:0;font-weight:800}
+.brand b i{font-style:normal;color:var(--phi)}
+.brand b u{text-decoration:none;color:var(--psi)}
+.brand span{color:var(--muted);font-weight:600}
+.spacer{flex:1}
+.badge{display:flex;align-items:center;gap:8px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;background:var(--panel2);white-space:nowrap}
+.badge .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.badge b{font-weight:600;letter-spacing:.02em}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+button.p{font-family:var(--mono);font-size:11.5px;color:var(--text);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 9px;cursor:pointer;transition:.13s}
+button.p:hover{border-color:#3a4870;background:#1a2338}
+button.p:active{transform:translateY(1px)}
+button.p:focus-visible,input:focus-visible{outline:2px solid var(--psi);outline-offset:2px}
+
+main{flex:1;display:flex;min-height:0}
+.viewport{flex:1;position:relative;min-width:0;display:flex;flex-direction:column}
+#mol{flex:1;display:block;width:100%;min-height:0;cursor:grab;touch-action:none}
+#mol.drag{cursor:grabbing}
+.hint{position:absolute;left:14px;top:12px;color:#54608a;font-size:11px;letter-spacing:.04em;pointer-events:none}
+.legend{position:absolute;right:14px;top:12px;text-align:right;font-size:11px;color:#5d6a95;line-height:1.7;pointer-events:none}
+.legend s{text-decoration:none;color:var(--phi)}
+.legend q{quotes:none;color:var(--psi)}
+
+.toggles{display:flex;gap:6px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--line);background:var(--panel)}
+label.t{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer;user-select:none;transition:.13s}
+label.t:hover{color:var(--text);border-color:#3a4870}
+label.t input{appearance:none;width:9px;height:9px;border-radius:2px;border:1px solid #47547d;margin:0;cursor:pointer}
+label.t input:checked{background:currentColor;border-color:currentColor}
+label.t:has(input:checked){color:var(--text);background:#182034;border-color:#39456c}
+label.t.k-phi:has(input:checked){color:var(--phi);border-color:#5b4520}
+label.t.k-psi:has(input:checked){color:var(--psi);border-color:#1e4b57}
+
+aside{width:376px;flex-shrink:0;border-left:1px solid var(--line);background:var(--panel);overflow-y:auto}
+.card{padding:14px 16px;border-bottom:1px solid var(--line)}
+.card h2{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+#rama{width:100%;height:auto;aspect-ratio:1/1;display:block;border-radius:4px;cursor:crosshair;touch-action:none}
+.cap{color:#5d6a95;font-size:10.5px;margin-top:8px;line-height:1.5}
+
+.row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.row .lab{width:74px;flex-shrink:0;font-size:12px}
+.row .lab em{font-style:normal;font-size:15px;font-weight:700}
+.row .val{width:62px;text-align:right;font-variant-numeric:tabular-nums;font-size:12.5px}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:3px;border-radius:2px;background:#26304b;outline:none;margin:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--text);cursor:pointer;border:3px solid var(--panel)}
+input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--text);cursor:pointer;border:2px solid var(--panel)}
+#phiR::-webkit-slider-thumb{background:var(--phi)} #phiR::-moz-range-thumb{background:var(--phi)}
+#psiR::-webkit-slider-thumb{background:var(--psi)} #psiR::-moz-range-thumb{background:var(--psi)}
+.k-phi .lab em{color:var(--phi)} .k-psi .lab em{color:var(--psi)}
+
+.dials{display:flex;gap:12px}
+.dial{flex:1;text-align:center}
+.dial canvas{width:100%;height:auto;aspect-ratio:1/1;display:block}
+.dial figcaption{font-size:10.5px;color:var(--muted);margin-top:4px}
+.chain{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.resbtns{display:flex;gap:4px;flex-wrap:wrap}
+.resbtns button{font-family:var(--mono);font-size:11px;width:26px;height:24px;border-radius:5px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);cursor:pointer}
+.resbtns button.on{background:var(--text);color:var(--ink);border-color:var(--text);font-weight:700}
+.warn{color:var(--bad)}
+.ok{color:#5ad18a}
+.foot{padding:11px 16px;color:#4b5779;font-size:10.5px;line-height:1.6}
+
+@media (max-width:900px){
+  main{flex-direction:column;overflow-y:auto}
+  .viewport{height:56vh;flex:none}
+  aside{width:100%;border-left:none;border-top:1px solid var(--line);overflow:visible}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand"><b><i>φ</i><u>ψ</u></b><span>backbone torsion lab</span></div>
+  <div class="badge" id="ssBadge"><span class="dot"></span><b>—</b></div>
+  <div class="badge" id="clashBadge"><b>—</b></div>
+  <div class="spacer"></div>
+  <div class="presets">
+    <button class="p" data-phi="-57" data-psi="-47">α-helix</button>
+    <button class="p" data-phi="-49" data-psi="-26">3₁₀</button>
+    <button class="p" data-phi="-139" data-psi="135">β-sheet</button>
+    <button class="p" data-phi="-119" data-psi="113">β-parallel</button>
+    <button class="p" data-phi="-75" data-psi="150">PPII</button>
+    <button class="p" data-phi="57" data-psi="47">α-left</button>
+  </div>
+</header>
+
+<main>
+  <section class="viewport">
+    <canvas id="mol"></canvas>
+    <div class="hint">drag to rotate · scroll to zoom</div>
+    <div class="legend">
+      <div><s>φ</s> = C′₍ᵢ₋₁₎–N–Cα–C′</div>
+      <div><q>ψ</q> = N–Cα–C′–N₍ᵢ₊₁₎</div>
+    </div>
+    <div class="toggles">
+      <label class="t"><input type="checkbox" id="tAtoms" checked>atoms</label>
+      <label class="t"><input type="checkbox" id="tLabels">labels</label>
+      <label class="t"><input type="checkbox" id="tH">hydrogens</label>
+      <label class="t"><input type="checkbox" id="tCB" checked>Cβ side chain</label>
+      <label class="t"><input type="checkbox" id="tCaps" checked>terminal caps</label>
+      <label class="t"><input type="checkbox" id="tPlane">peptide planes</label>
+      <label class="t k-phi"><input type="checkbox" id="tPhi" checked>φ bond</label>
+      <label class="t k-psi"><input type="checkbox" id="tPsi" checked>ψ bond</label>
+      <label class="t"><input type="checkbox" id="tArcs" checked>torsion arcs</label>
+      <label class="t"><input type="checkbox" id="tClash" checked>steric clashes</label>
+      <label class="t"><input type="checkbox" id="tSpin">spin</label>
+      <button class="p" id="reset">reset view</button>
+      <button class="p" id="pdb">save PDB</button>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <h2>Ramachandran map</h2>
+      <canvas id="rama" width="700" height="700"></canvas>
+      <div class="cap">Drag on the map to set φ/ψ. Shaded areas are schematic favoured (dark) and allowed (light) regions — a teaching guide, not a density from real structures.</div>
+    </div>
+
+    <div class="card">
+      <h2>Torsions · residue <span id="resTag">2</span></h2>
+      <div class="row k-phi"><span class="lab"><em>φ</em> phi</span><input type="range" id="phiR" min="-180" max="180" step="1" value="-57"><span class="val" id="phiV">−57°</span></div>
+      <div class="row k-psi"><span class="lab"><em>ψ</em> psi</span><input type="range" id="psiR" min="-180" max="180" step="1" value="-47"><span class="val" id="psiV">−47°</span></div>
+      <div class="row"><span class="lab"><em>ω</em> omega</span><input type="range" id="omeR" min="-180" max="180" step="1" value="180"><span class="val" id="omeV">180°</span></div>
+      <div class="cap">ω is the Cα–C′–N–Cα torsion across the peptide bond; it stays near 180° (trans) because the C–N bond has partial double-bond character. Set it to 0° to see a cis peptide.</div>
+    </div>
+
+    <div class="card">
+      <h2>Newman projections</h2>
+      <div class="dials">
+        <figure class="dial" style="margin:0"><canvas id="nPhi" width="320" height="320"></canvas><figcaption>down N → Cα &nbsp;(<span style="color:var(--phi)">φ</span>)</figcaption></figure>
+        <figure class="dial" style="margin:0"><canvas id="nPsi" width="320" height="320"></canvas><figcaption>down Cα → C′ &nbsp;(<span style="color:var(--psi)">ψ</span>)</figcaption></figure>
+      </div>
+      <div class="cap">Front atom's bonds meet at the centre; back atom's bonds start at the rim. Both are projected from the live 3-D coordinates.</div>
+    </div>
+
+    <div class="card">
+      <h2>Chain</h2>
+      <div class="chain"><span class="lab" style="width:auto">residues</span>
+        <input type="range" id="nRes" min="1" max="10" step="1" value="3" style="max-width:130px">
+        <span class="val" id="nResV">3</span>
+        <label class="t"><input type="checkbox" id="link">link all</label>
+      </div>
+      <div class="chain"><span class="lab" style="width:auto">edit</span><div class="resbtns" id="resBtns"></div></div>
+      <div class="cap">Turn on <b>link all</b>, then pick a preset: every residue takes the same φ/ψ and the real secondary structure builds itself.</div>
+    </div>
+    <div class="foot">Poly-alanine backbone, ideal bond lengths and angles (Engh &amp; Huber). Capped with acetyl and N-methylamide so residue 1 has a defined φ and the last residue a defined ψ.</div>
+  </aside>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.getElementById(s);
+const FF=getComputedStyle(document.body).fontFamily;
+const rad=d=>d*Math.PI/180, deg=r=>r*180/Math.PI;
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.sqrt(dot(a,a));
+const norm=a=>{const l=len(a)||1;return[a[0]/l,a[1]/l,a[2]/l];};
+const perp=(v,ax)=>sub(v,mul(ax,dot(v,ax)));
+const wrap=a=>{while(a>180)a-=360;while(a<-180)a+=360;return a;};
+
+/* ---- NeRF: place atom D given A,B,C + bond, angle, torsion ---- */
+function place(a,b,c,R,th,chi){
+  th=rad(th);chi=rad(chi);
+  const bc=norm(sub(c,b));
+  let n=cross(sub(b,a),bc);
+  if(len(n)<1e-8)n=cross([0,0,1],bc);
+  n=norm(n);
+  const p=cross(n,bc);
+  const d=[-R*Math.cos(th),R*Math.sin(th)*Math.cos(chi),R*Math.sin(th)*Math.sin(chi)];
+  return[c[0]+bc[0]*d[0]+p[0]*d[1]+n[0]*d[2],
+         c[1]+bc[1]*d[0]+p[1]*d[1]+n[1]*d[2],
+         c[2]+bc[2]*d[0]+p[2]*d[1]+n[2]*d[2]];
+}
+function dihedral(p0,p1,p2,p3){
+  const b0=sub(p0,p1),b1=norm(sub(p2,p1)),b2=sub(p3,p2);
+  const v=perp(b0,b1),w=perp(b2,b1);
+  return deg(Math.atan2(dot(cross(b1,v),w),dot(v,w)));
+}
+
+/* ---- ideal geometry ---- */
+const BL={N_CA:1.458,CA_C:1.525,C_N:1.329,C_O:1.231,N_H:1.00,CA_CB:1.530,CA_HA:1.09,C_CH3:1.52};
+const BA={N_CA_C:111.2,CA_C_N:116.2,C_N_CA:121.7,CA_C_O:120.8};
+
+function build(n,phis,psis,omes){
+  const at=[],bo=[],res=[],peps=[];
+  const A=(el,nm,r,pos,tag)=>{at.push({el,nm,r,pos,tag});return at.length-1;};
+  const B=(i,j,tag)=>bo.push({i,j,tag});
+  const u=[-1,0,0];
+  const dirv=(t,s)=>[Math.cos(rad(t))*u[0],Math.sin(rad(t))*s,0];
+  const pCH3=[0,0,0],pC0=[BL.C_CH3,0,0];
+  const pO0=add(pC0,mul(dirv(BA.CA_C_O,1),BL.C_O));
+  const pN=add(pC0,mul(dirv(BA.CA_C_N,-1),BL.C_N));
+  const iCH3=A('C','CH3',0,pCH3,'cap'),iC0=A('C','C',0,pC0,'cap'),iO0=A('O','O',0,pO0,'cap');
+  B(iCH3,iC0,'cap');B(iC0,iO0,'cap');
+  let pPrevCA=pCH3,pPrevC=pC0,iPrevCA=iCH3,iPrevC=iC0,iPrevO=iO0;
+  let Np=pN,iN=A('N','N',1,pN,'bb');B(iC0,iN,'pep');
+  for(let r=1;r<=n;r++){
+    const CA=place(pPrevCA,pPrevC,Np,BL.N_CA,BA.C_N_CA,omes[r-1]);
+    const iCA=A('C','CA',r,CA,'bb');B(iN,iCA,'bb');
+    const C=place(pPrevC,Np,CA,BL.CA_C,BA.N_CA_C,phis[r-1]);
+    const iC=A('C','C',r,C,'bb');B(iCA,iC,'bb');
+    const O=place(Np,CA,C,BL.C_O,BA.CA_C_O,psis[r-1]+180);
+    const iO=A('O','O',r,O,'bb');B(iC,iO,'bb');
+    const hd=norm(mul(add(norm(sub(pPrevC,Np)),norm(sub(CA,Np))),-1));
+    const iH=A('H','H',r,add(Np,mul(hd,BL.N_H)),'h');B(iN,iH,'h');
+    const b1=norm(sub(Np,CA)),b2=norm(sub(C,CA));
+    const bis=norm(add(b1,b2)),nn=norm(cross(b1,b2)),ca=Math.cos(rad(54.75)),sa=Math.sin(rad(54.75));
+    const dCB=norm(add(mul(bis,-ca),mul(nn,sa)));      // L-configuration
+    const dHA=norm(add(mul(bis,-ca),mul(nn,-sa)));
+    const iCB=A('C','CB',r,add(CA,mul(dCB,BL.CA_CB)),'side');B(iCA,iCB,'side');
+    const iHA=A('H','HA',r,add(CA,mul(dHA,BL.CA_HA)),'h');B(iCA,iHA,'h');
+    peps.push({ca1:iPrevCA,c:iPrevC,o:iPrevO,n:iN,h:iH,ca2:iCA});
+    const Nn=place(Np,CA,C,BL.C_N,BA.CA_C_N,psis[r-1]);
+    const iNn=A('N','N',r+1,Nn,r<n?'bb':'cap');B(iC,iNn,'pep');
+    res.push({N:iN,CA:iCA,C:iC,O:iO,H:iH,CB:iCB,HA:iHA,prevC:iPrevC,nextN:iNn});
+    if(r===n){
+      const c3=place(CA,C,Nn,BL.N_CA,BA.C_N_CA,180);
+      const iC3=A('C','CH3',n+1,c3,'cap');B(iNn,iC3,'cap');
+      const hc=norm(mul(add(norm(sub(C,Nn)),norm(sub(c3,Nn))),-1));
+      const iHc=A('H','H',n+1,add(Nn,mul(hc,BL.N_H)),'caph');B(iNn,iHc,'caph');
+      peps.push({ca1:iCA,c:iC,o:iO,n:iNn,h:iHc,ca2:iC3});
+    }
+    pPrevCA=CA;pPrevC=C;iPrevCA=iCA;iPrevC=iC;iPrevO=iO;Np=Nn;iN=iNn;
+  }
+  /* bond graph + clashes */
+  const adj=at.map(()=>[]);
+  bo.forEach(b=>{adj[b.i].push(b.j);adj[b.j].push(b.i);});
+  const RV={C:1.70,N:1.55,O:1.52,H:1.10};
+  const clashes=[];
+  for(let i=0;i<at.length;i++){
+    if(at[i].el==='H')continue;
+    const near=new Set([i]);adj[i].forEach(j=>{near.add(j);adj[j].forEach(k=>near.add(k));});
+    for(let j=i+1;j<at.length;j++){
+      if(at[j].el==='H'||near.has(j))continue;
+      const d=len(sub(at[i].pos,at[j].pos));
+      if(d<RV[at[i].el]+RV[at[j].el]-0.45)clashes.push({i,j,d});
+    }
+  }
+  return {at,bo,res,peps,clashes};
+}
+
+/* ---- state ---- */
+const S={n:3,sel:2,link:false,phi:[],psi:[],ome:[],
+  yaw:.5,pitch:-.28,zoom:1,pan:[0,0],spin:false};
+for(let i=0;i<10;i++){S.phi[i]=-57;S.psi[i]=-47;S.ome[i]=180;}
+let M=null;
+
+const T={atoms:1,labels:0,h:0,cb:1,caps:1,plane:0,phi:1,psi:1,arcs:1,clash:1};
+const COL={C:'#a9b6d4',N:'#5b8dff',O:'#ff6b5b',H:'#dbe3f5',CB:'#79cfa4'};
+const PHI='#ffb43d',PSI='#3fd0e8',BAD='#ff5c57';
+
+function rebuild(){
+  M=build(S.n,S.phi,S.psi,S.ome);
+  const c=M.at.reduce((a,x)=>add(a,x.pos),[0,0,0]);
+  M.center=mul(c,1/M.at.length);
+  M.radius=Math.max(4,...M.at.map(x=>len(sub(x.pos,M.center))));
+  updateUI();draw();drawRama();drawNewman();
+}
+
+/* ---- 3-D canvas ---- */
+const cv=$('mol'),cx=cv.getContext('2d');
+let W=0,H=0,DPR=1;
+function fit(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  const r=cv.getBoundingClientRect();
+  W=Math.max(1,r.width);H=Math.max(1,r.height);
+  cv.width=W*DPR;cv.height=H*DPR;
+  cx.setTransform(DPR,0,0,DPR,0,0);
+  draw();
+}
+function rot(p){
+  const v=sub(p,M.center);
+  const cy=Math.cos(S.yaw),sy=Math.sin(S.yaw),cp=Math.cos(S.pitch),sp=Math.sin(S.pitch);
+  const x=v[0]*cy+v[2]*sy, z=-v[0]*sy+v[2]*cy;
+  return [x, v[1]*cp-z*sp, v[1]*sp+z*cp];
+}
+function proj(p){
+  const q=rot(p);
+  const base=Math.min(W,H)/(2.35*M.radius)*S.zoom;
+  const D=M.radius*7, f=base*D, zc=D-q[2];
+  const s=f/Math.max(zc,1);
+  return {x:W/2+q[0]*s+S.pan[0], y:H/2-q[1]*s+S.pan[1], z:zc, s};
+}
+function shade(hex,z,zmin,zmax){
+  const t=Math.max(0,Math.min(1,(z-zmin)/Math.max(zmax-zmin,.001)));
+  const k=1-.55*t;
+  const n=parseInt(hex.slice(1),16);
+  return `rgb(${Math.round((n>>16&255)*k)},${Math.round((n>>8&255)*k)},${Math.round((n&255)*k)})`;
+}
+const visible=a=>(a.el==='H'?(T.h&&(a.tag!=='caph'||T.caps)):true)&&(a.nm!=='CB'||T.cb)&&(a.tag!=='cap'||T.caps)&&(a.tag!=='caph'||(T.caps&&T.h));
+
+function draw(){
+  if(!M)return;
+  cx.clearRect(0,0,W,H);
+  const g=cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#0a0f1c');g.addColorStop(1,'#060911');
+  cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  const P=M.at.map(a=>proj(a.pos));
+  const zs=P.map(p=>p.z),zmin=Math.min(...zs),zmax=Math.max(...zs);
+  const R=M.res[S.sel-1];
+  const phiSet=R?[R.prevC,R.N,R.CA,R.C]:[],psiSet=R?[R.N,R.CA,R.C,R.nextN]:[];
+  const prim=[];
+
+  if(T.plane)M.peps.forEach(pp=>{
+    const ids=[pp.ca1,pp.c,pp.o,pp.n,pp.ca2].concat(T.h?[pp.h]:[]).filter(i=>visible(M.at[i]));
+    if(ids.length<4)return;
+    const pts=ids.map(i=>P[i]);
+    const cxm=pts.reduce((a,p)=>a+p.x,0)/pts.length, cym=pts.reduce((a,p)=>a+p.y,0)/pts.length;
+    pts.sort((a,b)=>Math.atan2(a.y-cym,a.x-cxm)-Math.atan2(b.y-cym,b.x-cxm));
+    prim.push({z:ids.reduce((a,i)=>a+P[i].z,0)/ids.length+.6,f(){
+      cx.beginPath();pts.forEach((p,k)=>k?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y));cx.closePath();
+      cx.fillStyle='rgba(110,145,255,.13)';cx.fill();
+      cx.strokeStyle='rgba(140,170,255,.34)';cx.lineWidth=1;cx.stroke();
+    }});
+  });
+
+  M.bo.forEach(b=>{
+    const A=M.at[b.i],Bt=M.at[b.j];
+    if(!visible(A)||!visible(Bt))return;
+    const pa=P[b.i],pb=P[b.j],mid={x:(pa.x+pb.x)/2,y:(pa.y+pb.y)/2,z:(pa.z+pb.z)/2,s:(pa.s+pb.s)/2};
+    let hi=null;
+    const pair=(x,y)=>(b.i===x&&b.j===y)||(b.i===y&&b.j===x);
+    if(R&&T.phi&&pair(R.N,R.CA))hi=PHI;
+    if(R&&T.psi&&pair(R.CA,R.C))hi=PSI;
+    const dim=(A.tag==='cap'||Bt.tag==='cap'||A.tag==='caph'||Bt.tag==='caph')?.42:1;
+    [[pa,A,b.i],[pb,Bt,b.j]].forEach(([p,at,idx])=>{
+      const base=at.nm==='CB'?COL.CB:COL[at.el];
+      prim.push({z:(p.z+mid.z)/2,f(){
+        const w=Math.max(1.1,.155*mid.s)*(hi?1.55:1);
+        cx.lineCap='round';cx.globalAlpha=dim;
+        cx.beginPath();cx.moveTo(p.x,p.y);cx.lineTo(mid.x,mid.y);
+        cx.strokeStyle='#050810';cx.lineWidth=w+2.2;cx.stroke();
+        cx.strokeStyle=hi||shade(base,(p.z+mid.z)/2,zmin,zmax);cx.lineWidth=w;cx.stroke();
+        cx.globalAlpha=1;
+      }});
+    });
+  });
+
+  if(T.atoms)M.at.forEach((a,i)=>{
+    if(!visible(a))return;
+    const p=P[i];
+    const rr=(a.el==='H'?.17:a.el==='O'?.27:.29)*p.s;
+    const base=a.nm==='CB'?COL.CB:COL[a.el];
+    const dim=(a.tag==='cap'||a.tag==='caph')?.45:1;
+    const inPhi=T.phi&&phiSet.includes(i),inPsi=T.psi&&psiSet.includes(i);
+    prim.push({z:p.z,f(){
+      cx.globalAlpha=dim;
+      if(inPhi){cx.beginPath();cx.arc(p.x,p.y,rr+4.5,0,6.284);cx.strokeStyle=PHI;cx.lineWidth=1.6;cx.stroke();}
+      if(inPsi){cx.beginPath();cx.arc(p.x,p.y,rr+2,0,6.284);cx.strokeStyle=PSI;cx.lineWidth=1.6;cx.stroke();}
+      const gr=cx.createRadialGradient(p.x-rr*.35,p.y-rr*.4,rr*.1,p.x,p.y,rr);
+      gr.addColorStop(0,shade(base,zmin,zmin,zmax));
+      gr.addColorStop(1,shade(base,p.z+(zmax-zmin)*.55,zmin,zmax));
+      cx.beginPath();cx.arc(p.x,p.y,rr,0,6.284);cx.fillStyle=gr;cx.fill();
+      cx.strokeStyle='rgba(4,7,14,.85)';cx.lineWidth=1;cx.stroke();
+      cx.globalAlpha=1;
+    }});
+  });
+
+  prim.sort((a,b)=>b.z-a.z).forEach(p=>p.f());
+
+  if(T.clash)M.clashes.forEach(c=>{
+    const a=M.at[c.i],b=M.at[c.j];
+    if(!visible(a)||!visible(b))return;
+    const pa=P[c.i],pb=P[c.j];
+    cx.save();cx.setLineDash([4,4]);cx.strokeStyle=BAD;cx.lineWidth=1.4;cx.globalAlpha=.9;
+    cx.beginPath();cx.moveTo(pa.x,pa.y);cx.lineTo(pb.x,pb.y);cx.stroke();cx.restore();
+    cx.fillStyle=BAD;cx.font='10px '+FF;
+    cx.textAlign='center';cx.fillText(c.d.toFixed(2)+' Å',(pa.x+pb.x)/2,(pa.y+pb.y)/2-5);
+  });
+
+  if(T.arcs&&R){
+    if(T.phi)arc(M.at[R.prevC].pos,M.at[R.N].pos,M.at[R.CA].pos,M.at[R.C].pos,PHI,'φ '+fmt(S.phi[S.sel-1]));
+    if(T.psi)arc(M.at[R.N].pos,M.at[R.CA].pos,M.at[R.C].pos,M.at[R.nextN].pos,PSI,'ψ '+fmt(S.psi[S.sel-1]));
+  }
+  if(T.labels)M.at.forEach((a,i)=>{
+    if(!visible(a))return;
+    const p=P[i];
+    cx.font='600 10.5px '+FF;
+    cx.textAlign='left';cx.fillStyle='rgba(9,13,24,.8)';
+    const tx=a.nm+(a.r&&a.tag!=='cap'&&a.tag!=='caph'?a.r:'');
+    cx.fillRect(p.x+.24*p.s+1,p.y-9,cx.measureText(tx).width+5,12);
+    cx.fillStyle=a.tag==='cap'?'#6b78a0':'#dfe6f7';
+    cx.fillText(tx,p.x+.24*p.s+3.5,p.y);
+  });
+}
+function arc(p0,p1,p2,p3,col,label){
+  const ax=norm(sub(p2,p1));
+  const v=norm(perp(sub(p0,p1),ax)),w=norm(perp(sub(p3,p2),ax));
+  const ey=cross(ax,v);
+  const ang=Math.atan2(dot(w,ey),dot(w,v));
+  const c0=add(p1,mul(ax,len(sub(p2,p1))*.5)),r=.95;
+  const pts=[];
+  for(let k=0;k<=48;k++){const a=ang*k/48;pts.push(proj(add(c0,mul(add(mul(v,Math.cos(a)),mul(ey,Math.sin(a))),r))));}
+  cx.save();cx.strokeStyle=col;cx.lineWidth=2;cx.globalAlpha=.95;
+  cx.beginPath();pts.forEach((p,k)=>k?cx.lineTo(p.x,p.y):cx.moveTo(p.x,p.y));cx.stroke();
+  const e0=proj(add(c0,mul(v,r))),e1=pts[pts.length-1];
+  [e0,e1].forEach(p=>{cx.beginPath();cx.arc(p.x,p.y,2.6,0,6.284);cx.fillStyle=col;cx.fill();});
+  const m=pts[24];
+  cx.font='700 11px '+FF;cx.textAlign='center';
+  cx.fillStyle='rgba(8,11,20,.82)';
+  const tw=cx.measureText(label).width;
+  cx.fillRect(m.x-tw/2-4,m.y-14,tw+8,15);
+  cx.fillStyle=col;cx.fillText(label,m.x,m.y-3);
+  cx.restore();
+}
+const fmt=v=>(v<0?'−':'')+Math.abs(Math.round(v))+'°';
+
+/* ---- Ramachandran ---- */
+const rc=$('rama'),rx=rc.getContext('2d');
+const PADL=56,PADT=16,RS=616,BOT=PADT+RS,RIGHT=PADL+RS;
+const X=p=>PADL+(p+180)/360*RS, Y=p=>PADT+(180-p)/360*RS;
+function rr(x0,y0,x1,y1,r){
+  const a=X(x0),b=Y(y1),w=X(x1)-a,h=Y(y0)-b;
+  r=Math.min(r,w/2,h/2);
+  rx.beginPath();
+  rx.moveTo(a+r,b);rx.arcTo(a+w,b,a+w,b+h,r);rx.arcTo(a+w,b+h,a,b+h,r);
+  rx.arcTo(a,b+h,a,b,r);rx.arcTo(a,b,a+w,b,r);rx.closePath();rx.fill();
+}
+function el(px,py,rxx,ryy){
+  rx.beginPath();rx.ellipse(X(px),Y(py),rxx/360*RS,ryy/360*RS,0,0,6.284);rx.fill();
+}
+function drawRama(){
+  rx.clearRect(0,0,700,700);
+  rx.fillStyle='#0b1020';rx.fillRect(PADL,PADT,RS,RS);
+  rx.fillStyle='rgba(120,150,255,.17)';
+  rr(-180,50,-42,180,26);rr(-180,-180,-42,-166,10);rr(-180,-40,-42,30,22);
+  el(-63,-43,52,42);el(58,42,38,36);
+  rx.fillStyle='rgba(130,160,255,.30)';
+  rr(-166,104,-48,178,20);rr(-166,-180,-48,-172,8);
+  el(-63,-43,33,27);el(57,44,20,19);
+  rx.strokeStyle='#1c2540';rx.lineWidth=1;
+  for(let v=-120;v<=120;v+=60){
+    rx.beginPath();rx.moveTo(X(v),PADT);rx.lineTo(X(v),BOT);rx.stroke();
+    rx.beginPath();rx.moveTo(PADL,Y(v));rx.lineTo(RIGHT,Y(v));rx.stroke();
+  }
+  rx.strokeStyle='#3a4770';rx.lineWidth=1.4;
+  rx.beginPath();rx.moveTo(X(0),PADT);rx.lineTo(X(0),BOT);rx.moveTo(PADL,Y(0));rx.lineTo(RIGHT,Y(0));rx.stroke();
+  rx.strokeStyle='#2b3556';rx.lineWidth=2;rx.strokeRect(PADL,PADT,RS,RS);
+  rx.font='500 21px '+FF;rx.fillStyle='#7b88ab';
+  rx.textAlign='center';rx.textBaseline='top';
+  for(let v=-180;v<=180;v+=90)rx.fillText(v,X(v),BOT+12);
+  rx.textAlign='right';rx.textBaseline='middle';
+  for(let v=-180;v<=180;v+=90)rx.fillText(v,PADL-12,Y(v));
+  rx.font='700 27px '+FF;rx.textAlign='center';
+  rx.fillStyle=PHI;rx.fillText('\u03c6',PADL+RS/2,BOT+56);
+  rx.save();rx.translate(18,PADT+RS/2);rx.rotate(-Math.PI/2);rx.fillStyle=PSI;rx.fillText('\u03c8',0,0);rx.restore();
+  rx.font='500 19px '+FF;rx.fillStyle='#616e9b';rx.textAlign='left';
+  rx.fillText('\u03b2',X(-174),Y(148));rx.fillText('\u03b1R',X(-96),Y(-46));rx.fillText('\u03b1L',X(38),Y(40));
+  for(let i=0;i<S.n;i++){
+    if(i===S.sel-1)continue;
+    rx.beginPath();rx.arc(X(S.phi[i]),Y(S.psi[i]),7,0,6.284);
+    rx.fillStyle='rgba(214,224,248,.42)';rx.fill();
+  }
+  const px=X(S.phi[S.sel-1]),py=Y(S.psi[S.sel-1]);
+  rx.strokeStyle='rgba(255,255,255,.26)';rx.lineWidth=1;
+  rx.beginPath();rx.moveTo(px,PADT);rx.lineTo(px,BOT);rx.moveTo(PADL,py);rx.lineTo(RIGHT,py);rx.stroke();
+  rx.beginPath();rx.arc(px,py,12,0,6.284);
+  rx.fillStyle=(M&&M.clashes.length)?BAD:'#ffffff';rx.fill();
+  rx.strokeStyle='#0b1020';rx.lineWidth=3;rx.stroke();
+  rx.textBaseline='alphabetic';
+}
+function ramaSet(ev){
+  const r=rc.getBoundingClientRect();
+  const gx=(ev.clientX-r.left)/r.width*700, gy=(ev.clientY-r.top)/r.height*700;
+  const p=Math.max(-180,Math.min(180,(gx-PADL)/RS*360-180));
+  const q=Math.max(-180,Math.min(180,180-(gy-PADT)/RS*360));
+  setTorsion(Math.round(p),Math.round(q));
+}
+
+/* ---- Newman projections ---- */
+function newman(cvId,p0,p1,p2,p3,front,back,col,label){
+  const c=$(cvId),g=c.getContext('2d');
+  g.clearRect(0,0,320,320);
+  const O=160,Rr=112,ring=54;
+  const ax=norm(sub(p2,p1)),v=norm(perp(sub(p0,p1),ax)),ey=cross(ax,v);
+  const ang=a=>{const w=perp(sub(a,p1),ax);return Math.atan2(dot(w,ey),dot(w,v));};
+  const P=a=>[O+Rr*Math.sin(a),O-Rr*Math.cos(a)];
+  g.strokeStyle='#2b3556';g.lineWidth=2;
+  g.beginPath();g.arc(O,O,ring,0,6.284);g.stroke();
+  back.forEach(b=>{const a=ang(b.p),[x,y]=P(a);
+    g.strokeStyle='#5b678f';g.lineWidth=4;g.lineCap='round';
+    g.beginPath();g.moveTo(O+ring*Math.sin(a),O-ring*Math.cos(a));g.lineTo(x,y);g.stroke();
+    tag(g,x,y,a,b.n,b.c,false);});
+  front.forEach(b=>{const a=ang(b.p),[x,y]=P(a);
+    g.strokeStyle='#c6d0ea';g.lineWidth=6;g.lineCap='round';
+    g.beginPath();g.moveTo(O,O);g.lineTo(x,y);g.stroke();
+    tag(g,x,y,a,b.n,b.c,true);});
+  const a0=0,a1=rad(dihedral(p0,p1,p2,p3));
+  g.strokeStyle=col;g.lineWidth=3;g.beginPath();
+  g.arc(O,O,80,-Math.PI/2+Math.min(a0,a1),-Math.PI/2+Math.max(a0,a1));g.stroke();
+  g.fillStyle='#e9edf8';g.beginPath();g.arc(O,O,7,0,6.284);g.fill();
+  g.fillStyle=col;g.font='700 26px '+FF;g.textAlign='center';g.textBaseline='middle';
+  g.fillText(label,O,302);
+}
+function tag(g,x,y,a,nm,col,f){
+  const ox=x+22*Math.sin(a),oy=y-22*Math.cos(a);
+  g.font=(f?'700 ':'500 ')+'22px '+FF;
+  g.textAlign='center';g.textBaseline='middle';
+  g.fillStyle=f?col:'#7b88ab';g.fillText(nm,ox,oy);
+}
+function drawNewman(){
+  const R=M.res[S.sel-1];if(!R)return;
+  const A=i=>M.at[i].pos;
+  newman('nPhi',A(R.prevC),A(R.N),A(R.CA),A(R.C),
+    [{p:A(R.prevC),n:"C′",c:COL.C},{p:A(R.H),n:'H',c:COL.H}],
+    [{p:A(R.C),n:"C′",c:COL.C},{p:A(R.CB),n:'Cβ',c:COL.CB},{p:A(R.HA),n:'Hα',c:COL.H}],
+    PHI,fmt(S.phi[S.sel-1]));
+  newman('nPsi',A(R.N),A(R.CA),A(R.C),A(R.nextN),
+    [{p:A(R.N),n:'N',c:COL.N},{p:A(R.CB),n:'Cβ',c:COL.CB},{p:A(R.HA),n:'Hα',c:COL.H}],
+    [{p:A(R.nextN),n:'N',c:COL.N},{p:A(R.O),n:'O',c:COL.O}],
+    PSI,fmt(S.psi[S.sel-1]));
+}
+
+/* ---- classification ---- */
+function classify(p,q){
+  const inR=(a,b,c,d)=>p>=a&&p<=b&&q>=c&&q<=d;
+  if(inR(-100,-30,-70,-5))return['α-helix (right-handed)','#ffb43d'];
+  if(inR(-180,-45,90,180)||inR(-180,-45,-180,-170)){
+    return[(p>=-100&&p<=-45&&q>=115)?'polyproline II / extended':'β-strand (extended)','#3fd0e8'];
+  }
+  if(inR(30,105,-15,95))return['α-helix (left-handed)','#a78bfa'];
+  if(inR(-180,-45,-45,45))return['bridge region','#8492b3'];
+  return['unusual / strained','#ff5c57'];
+}
+
+/* ---- UI ---- */
+function setTorsion(p,q){
+  if(S.link){for(let i=0;i<10;i++){S.phi[i]=p;S.psi[i]=q;}}
+  else{S.phi[S.sel-1]=p;S.psi[S.sel-1]=q;}
+  rebuild();
+}
+function updateUI(){
+  const p=S.phi[S.sel-1],q=S.psi[S.sel-1];
+  $('phiR').value=p;$('psiR').value=q;$('omeR').value=S.ome[S.sel-1];
+  $('phiV').textContent=fmt(p);$('psiV').textContent=fmt(q);$('omeV').textContent=fmt(S.ome[S.sel-1]);
+  $('resTag').textContent=S.sel;$('nResV').textContent=S.n;
+  const [nm,col]=classify(p,q);
+  const b=$('ssBadge');b.querySelector('b').textContent=nm;b.querySelector('.dot').style.background=col;
+  const nc=M?M.clashes.length:0;
+  const cb=$('clashBadge');
+  cb.innerHTML=nc?`<b class="warn">${nc} steric clash${nc>1?'es':''}</b>`:'<b class="ok">no clashes</b>';
+  const bt=$('resBtns');
+  if(bt.children.length!==S.n){bt.innerHTML='';
+    for(let i=1;i<=S.n;i++){const el=document.createElement('button');el.textContent=i;
+      el.onclick=()=>{S.sel=i;updateUI();draw();drawRama();drawNewman();};bt.appendChild(el);}}
+  [...bt.children].forEach((el,i)=>el.className=(i+1===S.sel)?'on':'');
+}
+$('phiR').oninput=e=>{const v=+e.target.value;if(S.link)S.phi.fill(v);else S.phi[S.sel-1]=v;rebuild();};
+$('psiR').oninput=e=>{const v=+e.target.value;if(S.link)S.psi.fill(v);else S.psi[S.sel-1]=v;rebuild();};
+$('omeR').oninput=e=>{const v=+e.target.value;if(S.link)S.ome.fill(v);else S.ome[S.sel-1]=v;rebuild();};
+$('nRes').oninput=e=>{S.n=+e.target.value;S.sel=Math.min(S.sel,S.n);rebuild();S.zoom=1;S.pan=[0,0];draw();};
+$('link').onchange=e=>{S.link=e.target.checked;if(S.link)setTorsion(S.phi[S.sel-1],S.psi[S.sel-1]);};
+document.querySelectorAll('.presets button').forEach(b=>b.onclick=()=>setTorsion(+b.dataset.phi,+b.dataset.psi));
+const TID={atoms:'tAtoms',labels:'tLabels',h:'tH',cb:'tCB',caps:'tCaps',plane:'tPlane',
+  phi:'tPhi',psi:'tPsi',arcs:'tArcs',clash:'tClash'};
+Object.keys(TID).forEach(k=>{
+  const el=$(TID[k]);if(!el)return;
+  el.checked=!!T[k];
+  el.onchange=()=>{T[k]=el.checked?1:0;draw();drawRama();};
+});
+$('tSpin').onchange=e=>{S.spin=e.target.checked;if(S.spin)loop();};
+$('reset').onclick=()=>{S.yaw=.5;S.pitch=-.28;S.zoom=1;S.pan=[0,0];draw();};
+
+/* pointer */
+let drag=null;
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,sh:e.shiftKey};cv.classList.add('drag');cv.setPointerCapture(e.pointerId);});
+cv.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const dx=e.clientX-drag.x,dy=e.clientY-drag.y;drag.x=e.clientX;drag.y=e.clientY;
+  if(drag.sh){S.pan[0]+=dx;S.pan[1]+=dy;}
+  else{S.yaw+=dx*.008;S.pitch=Math.max(-1.5,Math.min(1.5,S.pitch+dy*.008));}
+  draw();
+});
+['pointerup','pointercancel','pointerleave'].forEach(t=>cv.addEventListener(t,()=>{drag=null;cv.classList.remove('drag');}));
+cv.addEventListener('wheel',e=>{e.preventDefault();S.zoom=Math.max(.3,Math.min(6,S.zoom*(e.deltaY<0?1.12:.89)));draw();},{passive:false});
+let rdrag=false;
+rc.addEventListener('pointerdown',e=>{rdrag=true;rc.setPointerCapture(e.pointerId);ramaSet(e);});
+rc.addEventListener('pointermove',e=>{if(rdrag)ramaSet(e);});
+['pointerup','pointercancel'].forEach(t=>rc.addEventListener(t,()=>rdrag=false));
+
+function loop(){if(!S.spin)return;S.yaw+=.006;draw();requestAnimationFrame(loop);}
+
+/* PDB export */
+$('pdb').onclick=()=>{
+  let s='REMARK   built by phi/psi backbone torsion lab\n',k=0;
+  const rn=a=>a.r===0?'ACE':(a.r===S.n+1?'NME':'ALA');
+  M.at.forEach(a=>{
+    k++;
+    const nm=(a.nm.length<4?' '+a.nm:a.nm).padEnd(4);
+    s+='ATOM  '+String(k).padStart(5)+' '+nm+' '+rn(a)+' A'+String(a.r+1).padStart(4)+'    '+
+      a.pos.map(v=>v.toFixed(3).padStart(8)).join('')+'  1.00  0.00          '+a.el.padStart(2)+'\n';
+  });
+  s+='END\n';
+  const u=URL.createObjectURL(new Blob([s],{type:'chemical/x-pdb'}));
+  const a=document.createElement('a');a.href=u;a.download='peptide.pdb';a.click();
+  setTimeout(()=>URL.revokeObjectURL(u),1000);
+};
+
+new ResizeObserver(fit).observe(cv);
+rebuild();fit();
+})();
+</script>
+</body>
+</html>
