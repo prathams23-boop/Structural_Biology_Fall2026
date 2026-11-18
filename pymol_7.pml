@@ -13,6 +13,7 @@ util.cbac ligand
 select pocket, (byres (ligand around 4)) and polymer
 # pocket for binding pocket
 show sticks, pocket and not name N+C+O
+get_area, pocket
 util.cbay pocket
 label pocket and name CA, "%s%s" % (resn, resi)
 
