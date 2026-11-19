@@ -29,7 +29,7 @@ change that reprograms an enzyme's product.
 
 ## 1. Protein Backbone Torsion Angle Visualiser
 
-`torsion-visualizer/`
+`torsion-visualizer.html`
 
 A single-file HTML tool for building a poly-alanine backbone residue by residue
 and watching the geometry respond to φ, ψ and ω. You can directly open the file in a browser.
@@ -84,9 +84,9 @@ native-PyMOL route.
 
 ---
 
-## 4. Semester Project — Can AlphaFold2 See a Reprogrammed Active Site?
+## 4. Semester Project: Can AlphaFold2 See a Reprogrammed Active Site?
 
-`eizs-alphafold-project/`
+`course_project/`
 
 ### The question
 
